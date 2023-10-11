@@ -24,6 +24,7 @@ require_once SII_PLUGIN_DIR . 'includes/controllers/CredentialsController.php';
 require_once SII_PLUGIN_DIR . 'includes/models/Emisor.php';
 require_once SII_PLUGIN_DIR . 'includes/views/EmisorView.php';
 require_once SII_PLUGIN_DIR . 'includes/controllers/EmisorController.php';
+require_once SII_PLUGIN_DIR . 'includes/api/RiosoftAPI.php';
 
 // Hook de activación: Configuración de la base de datos
 register_activation_hook(__FILE__, 'sii_setup_database');

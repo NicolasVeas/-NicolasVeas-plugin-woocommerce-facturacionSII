@@ -2,14 +2,19 @@
 
 require_once SII_PLUGIN_DIR . 'includes/models/CredentialsModel.php';
 require_once SII_PLUGIN_DIR . 'includes/views/CredentialsView.php';
+require_once SII_PLUGIN_DIR . 'includes/api/RiosoftAPI.php';
 
 class CredentialsController {
     protected $wpdb;
+    protected $model;
     protected $view;
+    protected $api;
 
     public function __construct($wpdb) {
         $this->wpdb = $wpdb;
+        $this->model = new CredentialsModel($this->wpdb);
         $this->view = new CredentialsView();
+        $this->api = new RiosoftAPI();
     }
 
     public function handleRequest() {
@@ -18,44 +23,26 @@ class CredentialsController {
             $this->handleLogin($_POST['email'], $_POST['password']);
         }
         
-         // Muestra el formulario
-         $this->view->renderForm();
-
+        // Muestra el formulario
+        $this->view->renderForm();
     }
 
     protected function handleLogin($email, $password) {
-        $apiUrl = "https://apibeta.riosoft.cl/enterprise/v1/authorization/login/service_clients";
-        
-        // Solicita el token usando las credenciales proporcionadas
-        $response = wp_remote_get($apiUrl, array(
-            'headers' => array(
-                'email' => $email,
-                'password' => $password
-            )
-        ));
+        $response = $this->api->loginServiceClient($email, $password);
 
-        if (is_wp_error($response)) {
-            // Manejar error
-            echo "Error: " . $response->get_error_message();
-            return;
-        }
-
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-
-        if (isset($data['access_token'])) {
+        if (isset($response['access_token'])) {
             // Guarda el token en la base de datos
-            $this->storeToken($email, $data);
+            $this->storeToken($email, $response);
             echo "Token almacenado correctamente.";
         } else {
             // Manejar error
-            echo "No se pudo obtener el token.";
+            echo isset($response['error']) ? $response['error'] : "No se pudo obtener el token.";
         }
     }
+    
 
     protected function storeToken($email, $data) {
-        $table_name = $this->wpdb->prefix . "dte_credentials";
-        $this->wpdb->insert($table_name, array(
+        $credentials = array(
             'email' => $email,
             'access_token' => $data['access_token'],
             'token_type' => $data['token_type'],
@@ -63,12 +50,9 @@ class CredentialsController {
             'refresh_token' => $data['refresh_token'],
             'created_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
-        ));
-    }
+        );
 
-    protected function renderForm() {
-        // Incluir la vista del formulario
-        include SII_PLUGIN_DIR . 'includes/views/credentials_form.php';
+        $this->model->saveCredentials($credentials);
     }
     
 
